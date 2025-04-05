@@ -29,7 +29,6 @@
 uint16_t serial0;
 uint16_t serial1;
 uint16_t serial2;
-char errorMessage[256];
 uint16_t co2R;
 String printStr;
 

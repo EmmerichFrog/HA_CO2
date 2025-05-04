@@ -104,3 +104,43 @@ void reconnect(PubSubClient& client) {
     }
   }
 }
+
+void sending(void* parameter) {
+  QueueHandle_t queue = (QueueHandle_t)parameter;
+  std::tuple<uint16_t, uint16_t, float, float> data;
+  uint16_t error;
+  uint16_t co2 = 0u;
+  float temperature = 0.0f;
+  float humidity = 0.0f;
+  long lastMsg = 0;
+  uint16_t lastCo2 = 0.0f;
+  setupWifi();
+  PubSubClient& client = setupMQTT();
+  bool run = true;
+
+  while (run) {
+    if (xQueueReceive(queue, &data, portMAX_DELAY) == pdPASS) {
+      if (!client.connected()) {
+        reconnect(client);
+      }
+      std::tie(error, co2, temperature, humidity) = data;
+      client.loop();
+      if (error == 0) {
+        long now = millis();
+        if (now - lastMsg > 5000 && abs(co2 - lastCo2) > 50) {
+          lastMsg = now;
+          // Convert the value to a char array
+          char co2Str[8];
+          itoa(co2, co2Str, 10);
+          Serial.print("Co2 to Str: ");
+          Serial.println(co2Str);
+          client.publish("esp32/co2", co2Str);
+          lastCo2 = co2;
+        }
+      }
+    } else {
+      client.loop();
+      delay(2500);
+    }
+  }
+}

@@ -5,10 +5,10 @@
 #include <PubSubClient.h>
 #include <WiFi.h>
 
+#include "main.h"
+
 #define DEFAULT_PW "sunisina"
 #define SERVER_KEY "mqtt_server"
 #define PORT_KEY "mqtt_server"
 
-void setupWifi();
-PubSubClient& setupMQTT();
-void reconnect(PubSubClient&);
+void sending(void* parameter);

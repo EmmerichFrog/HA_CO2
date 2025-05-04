@@ -1,4 +1,4 @@
-#include "read_sensors.h"
+#include "serial.h"
 
 uint32_t clockSpeed;
 
@@ -137,4 +137,20 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
   display.display();
 
   return std::make_tuple(error, co2R, temperature, humidity);
+}
+
+void reading(void* parameter) {
+  QueueHandle_t queue = (QueueHandle_t)parameter;
+  std::tuple<uint16_t, uint16_t, float, float> data;
+  TwoWire i2c_sensor(0);
+  SensirionI2CScd4x scd4x;
+  Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2c_sensor, -1);
+  setupSerial(i2c_sensor, scd4x, display);
+  bool run = true;
+
+  while (run) {
+    data = readSensors(scd4x, display);
+    xQueueSend(queue, &data, portTICK_PERIOD_MS * 5000);
+    delay(2500);
+  }
 }

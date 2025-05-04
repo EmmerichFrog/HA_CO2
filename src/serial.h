@@ -8,6 +8,8 @@
 
 #include <tuple>
 
+#include "main.h"
+
 #define TEMP_OFFSET 4
 #define SCL 5
 #define SDA 6
@@ -31,5 +33,4 @@
 void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
                  Adafruit_SSD1306& display);
 
-std::tuple<uint16_t, uint16_t, float, float> readSensors(SensirionI2CScd4x&,
-                                                         Adafruit_SSD1306&);
+void reading(void* parameter);

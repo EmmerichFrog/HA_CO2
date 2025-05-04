@@ -1,9 +1,6 @@
 #include "read_sensors.h"
 
-TwoWire i2c_sensor(0);
-
-SensirionI2CScd4x scd4x;
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2c_sensor, -1);
+uint32_t clockSpeed;
 
 void printUint16Hex(uint16_t value) {
   Serial.print(value < 4096 ? "0" : "");
@@ -20,7 +17,13 @@ void printSerialNumber(uint16_t serial0, uint16_t serial1, uint16_t serial2) {
   Serial.println();
 }
 
-std::tuple<SensirionI2CScd4x&, Adafruit_SSD1306&> setupSerial() {
+void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
+                 Adafruit_SSD1306& display) {
+  char errorMessage[256];
+  Serial.print("I2C using pin: SDA ");
+  Serial.print(SDA);
+  Serial.print(" SCL ");
+  Serial.println(SCL);
   i2c_sensor.begin(SDA, SCL);
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
@@ -43,7 +46,9 @@ std::tuple<SensirionI2CScd4x&, Adafruit_SSD1306&> setupSerial() {
     errorToString(error, errorMessage, 256);
     Serial.println(errorMessage);
   }
-
+  uint16_t serial0;
+  uint16_t serial1;
+  uint16_t serial2;
   error = scd4x.getSerialNumber(serial0, serial1, serial2);
   if (error) {
     Serial.print("Error trying to execute getSerialNumber(): ");
@@ -65,12 +70,17 @@ std::tuple<SensirionI2CScd4x&, Adafruit_SSD1306&> setupSerial() {
   display.clearDisplay();
   display.setCursor(FIRST_COL, SECOND_ROW);
   display.print("Waiting 5 seconds for sensor...");
-
-  return std::tuple<SensirionI2CScd4x&, Adafruit_SSD1306&>(scd4x, display);
 }
 
 std::tuple<uint16_t, uint16_t, float, float> readSensors(
     SensirionI2CScd4x& scd4x, Adafruit_SSD1306& display) {
+  char errorMessage[256];
+  String printStr;
+  uint16_t co2R;
+  float temperature;
+  float humidity;
+  uint16_t error;
+
   printStr = "";
   bool isDataReady = false;
   error = scd4x.getDataReadyFlag(isDataReady);
@@ -81,7 +91,7 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
     return std::make_tuple(error, 0, 0.0f, 0.0f);
   }
   if (!isDataReady) {
-    return std::make_tuple(-1, 0, 0.0f, 0.0f);
+    return std::make_tuple(READ_FAIL, 0, 0.0f, 0.0f);
   }
   error = scd4x.readMeasurement(co2R, temperature, humidity);
   if (error) {
@@ -90,16 +100,8 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
     Serial.println(errorMessage);
   } else if (co2R == 0) {
     Serial.println("Invalid sample detected, skipping.");
-  } else {
-    Serial.print("co2R:");
-    Serial.print(co2R);
-    Serial.print("\t");
-    Serial.print("temperatureR:");
-    Serial.print(temperature);
-    Serial.print("\t");
-    Serial.print("humidity:");
-    Serial.println(humidity);
   }
+
   printStr.concat("eco2R: ");
   printStr.concat(co2R);
   printStr.concat("ppm");

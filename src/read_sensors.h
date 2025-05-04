@@ -12,8 +12,8 @@
 #define SCL 5
 #define SDA 6
 
-#define SCREEN_WIDTH 128  // OLED display width, in pixels
-#define SCREEN_HEIGHT 64  // OLED display height, in pixels
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
 
 #define FIRST_COL 0
 #define SECOND_COL 36
@@ -26,20 +26,10 @@
 #define FOURTH_ROW 36
 #define FIFTH_ROW 46
 
-uint16_t serial0;
-uint16_t serial1;
-uint16_t serial2;
-uint16_t co2R;
-String printStr;
+#define READ_FAIL -1
 
-float temperature;
-float humidity;
-uint16_t error;
-char errorMessage[256];
-
-uint32_t clockSpeed;
-
-std::tuple<SensirionI2CScd4x&, Adafruit_SSD1306&> setupSerial();
+void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
+                 Adafruit_SSD1306& display);
 
 std::tuple<uint16_t, uint16_t, float, float> readSensors(SensirionI2CScd4x&,
                                                          Adafruit_SSD1306&);

@@ -2,8 +2,11 @@
 
 #include <WiFiManager.h>
 
+uint32_t lastMsg = 0;
+uint8_t commSts = COMM_NA;
+
 // Default settings for mqtt
-char mqtt_server[64] = "192.168.1.111";
+char mqtt_server[64] = "192.168.2.205";
 char mqtt_port[6] = "1883";
 
 WiFiClient espClient;
@@ -95,7 +98,9 @@ void reconnect(PubSubClient& client) {
     if (client.connect("ESP8266Client")) {
       Serial.println("connected");
       client.subscribe("esp32/output");
+      commSts = COMM_OK;
     } else {
+      commSts = COMM_KO;
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.print(" - ip: " + String(mqtt_server) + ":" + String(mqtt_port));
@@ -112,7 +117,6 @@ void sending(void* parameter) {
   uint16_t co2 = 0u;
   float temperature = 0.0f;
   float humidity = 0.0f;
-  long lastMsg = 0;
   uint16_t lastCo2 = 0.0f;
   setupWifi();
   PubSubClient& client = setupMQTT();
@@ -126,7 +130,7 @@ void sending(void* parameter) {
       std::tie(error, co2, temperature, humidity) = data;
       client.loop();
       if (error == 0) {
-        long now = millis();
+        uint32_t now = millis();
         if (now - lastMsg > 5000 && abs(co2 - lastCo2) > 50) {
           lastMsg = now;
           // Convert the value to a char array

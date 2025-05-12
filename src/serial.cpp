@@ -1,6 +1,9 @@
 #include "serial.h"
 
-uint32_t clockSpeed;
+#include "mqtt.h"
+
+extern uint32_t lastMsg;
+extern uint8_t commSts;
 
 void printUint16Hex(uint16_t value) {
   Serial.print(value < 4096 ? "0" : "");
@@ -30,7 +33,6 @@ void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
     for (;;);
   }
   delay(2000);
-  clockSpeed = getCpuFrequencyMhz();
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
@@ -76,7 +78,7 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
     SensirionI2CScd4x& scd4x, Adafruit_SSD1306& display) {
   char errorMessage[256];
   String printStr;
-  uint16_t co2R;
+  uint16_t co2;
   float temperature;
   float humidity;
   uint16_t error;
@@ -93,17 +95,17 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
   if (!isDataReady) {
     return std::make_tuple(READ_FAIL, 0, 0.0f, 0.0f);
   }
-  error = scd4x.readMeasurement(co2R, temperature, humidity);
+  error = scd4x.readMeasurement(co2, temperature, humidity);
   if (error) {
     Serial.print("error trying to execute readMeasurement(): ");
     errorToString(error, errorMessage, 256);
     Serial.println(errorMessage);
-  } else if (co2R == 0) {
+  } else if (co2 == 0) {
     Serial.println("Invalid sample detected, skipping.");
   }
 
-  printStr.concat("eco2R: ");
-  printStr.concat(co2R);
+  printStr.concat("eco2: ");
+  printStr.concat(co2);
   printStr.concat("ppm");
   printStr.concat("\n");
   printStr.concat("T: ");
@@ -117,7 +119,10 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
   Serial.print(printStr);
   display.clearDisplay();
   display.setCursor(FIRST_COL, FIRST_ROW);
-  display.print("co2 Sensor");
+  display.print("Comm. Sts:");
+  display.setCursor(THIRD_COL, FIRST_ROW);
+  String commStsString = (commSts = COMM_OK) ? "OK" : "KO";
+  display.print(commStsString);
   display.setCursor(FIRST_COL, SECOND_ROW);
   display.print("co2");
   display.setCursor(SECOND_COL, SECOND_ROW);
@@ -125,18 +130,18 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
   display.setCursor(THIRD_COL, SECOND_ROW);
   display.print("Hum.");
   display.setCursor(FIRST_COL, THIRD_ROW);
-  display.print(co2R);
+  display.print(co2);
   display.setCursor(SECOND_COL, THIRD_ROW);
   display.print(temperature);
   display.setCursor(THIRD_COL, THIRD_ROW);
   display.print(humidity);
   display.setCursor(FIRST_COL, FIFTH_ROW);
-  display.print("CPU MHz:");
+  display.print("Last pub [s]:");
   display.setCursor(THIRD_COL, FIFTH_ROW);
-  display.print(clockSpeed);
+  display.print((millis() - lastMsg) / 1000);
   display.display();
 
-  return std::make_tuple(error, co2R, temperature, humidity);
+  return std::make_tuple(error, co2, temperature, humidity);
 }
 
 void reading(void* parameter) {

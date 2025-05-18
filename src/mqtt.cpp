@@ -17,10 +17,10 @@ void saveConfigCallback() { needSave = true; }
 
 void setupWifi() {
   Serial.println("mounted file system");
-  if (FFat.exists("/config.json")) {
+  if (LittleFS.exists("/config.json")) {
     // file exists, reading and loading
     Serial.println("reading config file");
-    File configFile = FFat.open("/config.json", FILE_READ);
+    File configFile = LittleFS.open("/config.json", FILE_READ);
     if (configFile) {
       Serial.println("opened config file");
       size_t size = configFile.size();
@@ -31,7 +31,7 @@ void setupWifi() {
 
       JsonDocument json;
       auto deserializeError = deserializeJson(json, buf.get());
-      serializeJson(json, Serial);
+      // serializeJson(json, Serial);
       if (!deserializeError) {
         Serial.println("\nparsed json");
         strcpy(mqtt_server, json[SERVER_KEY]);
@@ -72,7 +72,7 @@ void setupWifi() {
     json[SERVER_KEY] = mqtt_server;
     json[PORT_KEY] = mqtt_port;
 
-    File configFile = FFat.open("/config.json", FILE_WRITE, true);
+    File configFile = LittleFS.open("/config.json", FILE_WRITE, true);
     if (!configFile) {
       Serial.println("failed to open config file for writing");
     }

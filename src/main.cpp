@@ -9,13 +9,7 @@ void setup() {
   TaskHandle_t CommTask;
   QueueHandle_t queue;
 
-  /* uncomment for formatting ffat first time
-  delay(10000);
-  Serial.println("formatting");
-  bool sts = FFat.format();
-  Serial.print("Done");
-  Serial.println(sts);
-  FFat.begin(); */
+  LittleFS.begin(true);
   queue = xQueueCreate(2, sizeof(std::tuple<uint16_t, uint16_t, float, float>));
   setCpuFrequencyMhz(80);
   xTaskCreate(reading, "Reading", 10000, (void*)queue, 0, &SensorTask);

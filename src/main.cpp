@@ -10,8 +10,8 @@ void setup() {
   QueueHandle_t queue;
 
   LittleFS.begin(true);
+  // tuple of error, co2, temperature, humidity coming from sensor
   queue = xQueueCreate(2, sizeof(std::tuple<uint16_t, uint16_t, float, float>));
-  setCpuFrequencyMhz(80);
   xTaskCreate(reading, "Reading", 10000, (void*)queue, 0, &SensorTask);
   xTaskCreate(sending, "MQTT", 20000, (void*)queue, 0, &CommTask);
 }

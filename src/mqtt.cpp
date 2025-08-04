@@ -18,7 +18,6 @@ void saveConfigCallback() { needSave = true; }
 void setupWifi() {
   Serial.println("mounted file system");
   if (LittleFS.exists("/config.json")) {
-    // file exists, reading and loading
     Serial.println("reading config file");
     File configFile = LittleFS.open("/config.json", FILE_READ);
     if (configFile) {
@@ -44,7 +43,7 @@ void setupWifi() {
   }
   // end read
 
-  // value id/name placeholder/prompt default length
+  // value id/name placeholder/prompt/default length
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server,
                                           64);
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
@@ -95,7 +94,7 @@ void reconnect(PubSubClient& client) {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect("ESP8266Client")) {
+    if (client.connect("ESP32Client")) {
       Serial.println("connected");
       client.subscribe("esp32/output");
       commSts = COMM_OK;
@@ -120,10 +119,16 @@ void sending(void* parameter) {
   uint16_t lastCo2 = 0.0f;
   setupWifi();
   PubSubClient& client = setupMQTT();
-  bool run = true;
+  const uint32_t MIN_PUB_RATE = 5 * 60 * 1000;
+  const uint16_t MIN_PUB_DELTA = 50;
 
+  bool run = true;
+  // Cpu freq. will be limited to 80 once all setup is finished and changed
+  // every time we need to publish
+  setCpuFrequencyMhz(80);
   while (run) {
     if (xQueueReceive(queue, &data, portMAX_DELAY) == pdPASS) {
+      setCpuFrequencyMhz(240);
       if (!client.connected()) {
         reconnect(client);
       }
@@ -131,9 +136,9 @@ void sending(void* parameter) {
       client.loop();
       if (error == 0) {
         uint32_t now = millis();
-        if (now - lastMsg > 5000 && abs(co2 - lastCo2) > 50) {
+        if (now - lastMsg > MIN_PUB_RATE ||
+            abs(co2 - lastCo2) > MIN_PUB_DELTA) {
           lastMsg = now;
-          // Convert the value to a char array
           char co2Str[8];
           itoa(co2, co2Str, 10);
           Serial.print("Co2 to Str: ");
@@ -142,9 +147,7 @@ void sending(void* parameter) {
           lastCo2 = co2;
         }
       }
-    } else {
-      client.loop();
-      delay(2500);
+      setCpuFrequencyMhz(80);
     }
   }
 }

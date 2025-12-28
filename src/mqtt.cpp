@@ -6,17 +6,34 @@ uint32_t lastMsg = 0;
 uint8_t commSts = COMM_NA;
 
 // Default settings for mqtt
-char mqtt_server[64] = "192.168.2.205";
-char mqtt_port[6] = "1883";
+char mqtt_server[64] = "192.168.2.99";
+char mqtt_port[64] = "1883";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-bool needSave = false;
-// callback notifying us of the need to save config
-void saveConfigCallback() { needSave = true; }
 
-void setupWifi() {
-  Serial.println("mounted file system");
+void saveConfigCallback() {
+  Serial.println("saving config");
+  JsonDocument json;
+
+  json[SERVER_KEY] = mqtt_server;
+  json[PORT_KEY] = mqtt_port;
+
+  File configFile = LittleFS.open("/config.json", FILE_WRITE, true);
+  if (!configFile) {
+    while (true) {
+      Serial.println("failed to open config file for writing");
+    }
+  }
+
+  serializeJson(json, Serial);
+  Serial.println();
+  serializeJson(json, configFile);
+
+  configFile.close();
+}
+
+void loadConfig() {
   if (LittleFS.exists("/config.json")) {
     Serial.println("reading config file");
     File configFile = LittleFS.open("/config.json", FILE_READ);
@@ -32,22 +49,32 @@ void setupWifi() {
       auto deserializeError = deserializeJson(json, buf.get());
       // serializeJson(json, Serial);
       if (!deserializeError) {
-        Serial.println("\nparsed json");
-        strcpy(mqtt_server, json[SERVER_KEY]);
-        strcpy(mqtt_port, json[PORT_KEY]);
+        Serial.println("parsed json");
+        const char* ip = json[SERVER_KEY];
+        strcpy(mqtt_server, ip);
+        const char* port = json[PORT_KEY];
+        strcpy(mqtt_port, port);
       } else {
         Serial.println("failed to load json config");
       }
       configFile.close();
     }
+  } else {
+    Serial.println("config file not present!");
   }
-  // end read
+}
 
+void setupWifi() {
+  loadConfig();
+
+  Serial.println("Loaded from file: ");
+  Serial.println("\tmqtt_server : " + String(mqtt_server));
+  Serial.println("\tmqtt_port : " + String(mqtt_port) + "\n");
   // value id/name placeholder/prompt/default length
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server,
-                                          64);
-  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
-
+                                          sizeof(mqtt_server));
+  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port,
+                                        sizeof(mqtt_port));
   WiFiManager wm;
   // wm.resetSettings();
   wm.setSaveConfigCallback(saveConfigCallback);
@@ -57,31 +84,9 @@ void setupWifi() {
 
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
-  Serial.println("Loaded from file: ");
-  Serial.println("\tmqtt_server : " + String(mqtt_server));
-  Serial.println("\tmqtt_port : " + String(mqtt_port));
 
   Serial.println("local ip");
   Serial.println(WiFi.localIP());
-
-  if (needSave) {
-    Serial.println("saving config");
-    JsonDocument json;
-
-    json[SERVER_KEY] = mqtt_server;
-    json[PORT_KEY] = mqtt_port;
-
-    File configFile = LittleFS.open("/config.json", FILE_WRITE, true);
-    if (!configFile) {
-      Serial.println("failed to open config file for writing");
-    }
-
-    serializeJson(json, Serial);
-    Serial.println();
-    serializeJson(json, configFile);
-
-    configFile.close();
-  }
 }
 
 PubSubClient& setupMQTT() {
@@ -92,7 +97,7 @@ PubSubClient& setupMQTT() {
 void reconnect(PubSubClient& client) {
   // Loop until we're reconnected
   while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
+    Serial.print("Attempting MQTT connection...\n");
     // Attempt to connect
     if (client.connect("ESP32Client")) {
       Serial.println("connected");
@@ -100,7 +105,7 @@ void reconnect(PubSubClient& client) {
       commSts = COMM_OK;
     } else {
       commSts = COMM_KO;
-      Serial.print("failed, rc=");
+      Serial.println("MQTT connection failed, rc=");
       Serial.print(client.state());
       Serial.print(" - ip: " + String(mqtt_server) + ":" + String(mqtt_port));
       Serial.println(" try again in 5 seconds");

@@ -51,6 +51,7 @@ void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
   uint16_t serial0;
   uint16_t serial1;
   uint16_t serial2;
+  scd4x.setTemperatureOffset(8.f);
   error = scd4x.getSerialNumber(serial0, serial1, serial2);
   if (error) {
     Serial.print("Error trying to execute getSerialNumber(): ");

@@ -8,6 +8,7 @@ uint8_t commSts = COMM_NA;
 // Default settings for mqtt
 char mqtt_server[64] = "192.168.2.99";
 char mqtt_port[64] = "1883";
+char mqtt_topic[64] = "esp32/co2";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -54,6 +55,8 @@ void loadConfig() {
         strcpy(mqtt_server, ip);
         const char* port = json[PORT_KEY];
         strcpy(mqtt_port, port);
+        const char* topic = json[TOPIC_KEY];
+        strcpy(mqtt_topic, topic);
       } else {
         Serial.println("failed to load json config");
       }
@@ -148,7 +151,7 @@ void sending(void* parameter) {
           itoa(co2, co2Str, 10);
           Serial.print("Co2 to Str: ");
           Serial.println(co2Str);
-          client.publish("esp32/co2", co2Str);
+          client.publish(mqtt_topic, co2Str);
           lastCo2 = co2;
         }
       }

@@ -10,6 +10,7 @@
 #define DEFAULT_PW "sunisina"
 #define SERVER_KEY "mqtt_server"
 #define PORT_KEY "mqtt_port"
+#define TOPIC_KEY "mqtt_topic"
 
 enum CommSts {
   COMM_NA = 0,

@@ -3,7 +3,7 @@
 #include <Adafruit_SSD1306.h>
 #include <Arduino.h>
 #include <SensirionCore.h>
-#include <SensirionI2CScd4x.h>
+#include <SensirionI2cScd4x.h>
 #include <Wire.h>
 
 #include <tuple>
@@ -30,7 +30,7 @@
 
 #define READ_FAIL -1
 
-void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
+void setupSerial(TwoWire& i2c_sensor, SensirionI2cScd4x& scd4x,
                  Adafruit_SSD1306& display);
 
 void reading(void* parameter);

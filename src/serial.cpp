@@ -5,22 +5,13 @@
 extern uint32_t lastMsg;
 extern uint8_t commSts;
 
-void printUint16Hex(uint16_t value) {
-  Serial.print(value < 4096 ? "0" : "");
-  Serial.print(value < 256 ? "0" : "");
-  Serial.print(value < 16 ? "0" : "");
-  Serial.print(value, HEX);
+void printSerial(uint64_t& value) {
+  Serial.print("0x");
+  Serial.print((uint32_t)(value >> 32), HEX);
+  Serial.print((uint32_t)(value & 0xFFFFFFFF), HEX);
 }
 
-void printSerialNumber(uint16_t serial0, uint16_t serial1, uint16_t serial2) {
-  Serial.print("Serial: 0x");
-  printUint16Hex(serial0);
-  printUint16Hex(serial1);
-  printUint16Hex(serial2);
-  Serial.println();
-}
-
-void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
+void setupSerial(TwoWire& i2c_sensor, SensirionI2cScd4x& scd4x,
                  Adafruit_SSD1306& display) {
   char errorMessage[256];
   Serial.print("I2C using pin: SDA ");
@@ -40,7 +31,7 @@ void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
   display.println("CO2 Sensor");
   display.display();
   uint16_t error;
-  scd4x.begin(i2c_sensor);
+  scd4x.begin(i2c_sensor, SCD40_I2C_ADDR_62);
   // stop potentially previously started measurement
   error = scd4x.stopPeriodicMeasurement();
   if (error) {
@@ -48,17 +39,19 @@ void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
     errorToString(error, errorMessage, 256);
     Serial.println(errorMessage);
   }
-  uint16_t serial0;
-  uint16_t serial1;
-  uint16_t serial2;
-  scd4x.setTemperatureOffset(8.f);
-  error = scd4x.getSerialNumber(serial0, serial1, serial2);
+  uint64_t serial;
+  scd4x.setTemperatureOffset(18.f);
+  float_t temp_offset;
+  scd4x.getTemperatureOffset(temp_offset);
+  Serial.print("Temp offset: ");
+  Serial.println(scd4x.getTemperatureOffset(temp_offset));
+  error = scd4x.getSerialNumber(serial);
   if (error) {
     Serial.print("Error trying to execute getSerialNumber(): ");
     errorToString(error, errorMessage, 256);
     Serial.println(errorMessage);
   } else {
-    printSerialNumber(serial0, serial1, serial2);
+    printSerial(serial);
   }
 
   // Start Measurement
@@ -76,7 +69,7 @@ void setupSerial(TwoWire& i2c_sensor, SensirionI2CScd4x& scd4x,
 }
 
 std::tuple<uint16_t, uint16_t, float, float> readSensors(
-    SensirionI2CScd4x& scd4x, Adafruit_SSD1306& display) {
+    SensirionI2cScd4x& scd4x, Adafruit_SSD1306& display) {
   char errorMessage[256];
   String printStr;
   uint16_t co2;
@@ -86,7 +79,7 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
 
   printStr = "";
   bool isDataReady = false;
-  error = scd4x.getDataReadyFlag(isDataReady);
+  error = scd4x.getDataReadyStatus(isDataReady);
   if (error) {
     Serial.print("error trying to execute getDataReadyFlag(): ");
     errorToString(error, errorMessage, 256);
@@ -149,7 +142,7 @@ void reading(void* parameter) {
   QueueHandle_t queue = (QueueHandle_t)parameter;
   std::tuple<uint16_t, uint16_t, float, float> data;
   TwoWire i2c_sensor(0);
-  SensirionI2CScd4x scd4x;
+  SensirionI2cScd4x scd4x;
   Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2c_sensor, -1);
   setupSerial(i2c_sensor, scd4x, display);
   bool run = true;

@@ -117,6 +117,9 @@ void reconnect(PubSubClient& client) {
   }
 }
 
+const uint32_t MIN_PUB_RATE = 5 * 60 * 1000;
+const uint16_t MIN_PUB_DELTA = 50;
+
 void sending(void* parameter) {
   QueueHandle_t queue = (QueueHandle_t)parameter;
   std::tuple<uint16_t, uint16_t, float, float> data;
@@ -127,8 +130,6 @@ void sending(void* parameter) {
   uint16_t lastCo2 = 0.0f;
   setupWifi();
   PubSubClient& client = setupMQTT();
-  const uint32_t MIN_PUB_RATE = 5 * 60 * 1000;
-  const uint16_t MIN_PUB_DELTA = 50;
 
   bool run = true;
   // Cpu freq. will be limited to 80 once all setup is finished and changed

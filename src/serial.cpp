@@ -4,6 +4,7 @@
 
 extern uint32_t lastMsg;
 extern uint8_t commSts;
+extern const uint32_t MIN_PUB_RATE;
 
 void printSerial(uint64_t& value) {
   Serial.print("0x");
@@ -39,12 +40,10 @@ void setupSerial(TwoWire& i2c_sensor, SensirionI2cScd4x& scd4x,
     errorToString(error, errorMessage, 256);
     Serial.println(errorMessage);
   }
+
+  scd4x.setTemperatureOffset(6.f);
+  scd4x.setSensorAltitude(566.f);
   uint64_t serial;
-  scd4x.setTemperatureOffset(18.f);
-  float_t temp_offset;
-  scd4x.getTemperatureOffset(temp_offset);
-  Serial.print("Temp offset: ");
-  Serial.println(scd4x.getTemperatureOffset(temp_offset));
   error = scd4x.getSerialNumber(serial);
   if (error) {
     Serial.print("Error trying to execute getSerialNumber(): ");
@@ -81,7 +80,7 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
   bool isDataReady = false;
   error = scd4x.getDataReadyStatus(isDataReady);
   if (error) {
-    Serial.print("error trying to execute getDataReadyFlag(): ");
+    Serial.print("error trying to execute getDataReadyStatus(): ");
     errorToString(error, errorMessage, 256);
     Serial.println(errorMessage);
     return std::make_tuple(error, 0, 0.0f, 0.0f);
@@ -115,8 +114,7 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
   display.setCursor(FIRST_COL, FIRST_ROW);
   display.print("Comm. Sts:");
   display.setCursor(THIRD_COL, FIRST_ROW);
-  String commStsString = (commSts = COMM_OK) ? "OK" : "KO";
-  display.print(commStsString);
+  display.print((commSts = COMM_OK) ? "OK" : "KO");
   display.setCursor(FIRST_COL, SECOND_ROW);
   display.print("co2");
   display.setCursor(SECOND_COL, SECOND_ROW);
@@ -134,6 +132,10 @@ std::tuple<uint16_t, uint16_t, float, float> readSensors(
   display.setCursor(THIRD_COL, FIFTH_ROW);
   display.print((millis() - lastMsg) / 1000);
   display.display();
+
+  if (millis() - lastMsg > MIN_PUB_RATE * 1.05) {
+    esp_restart();
+  }
 
   return std::make_tuple(error, co2, temperature, humidity);
 }
